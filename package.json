@@ -1,0 +1,15 @@
+{
+  "name": "zorua",
+  "version": "0.0.1",
+  "description": "reader",
+  "main": "main.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "XG.Ley",
+  "license": "LGPL-3.0-or-later",
+  "devDependencies": {
+    "@types/node": "22.7.7",
+    "tsx": "4.19.1"
+  }
+}
