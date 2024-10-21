@@ -1,15 +1,22 @@
 {
-  "name": "zorua",
-  "version": "0.0.1",
-  "description": "reader",
-  "main": "main.ts",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "XG.Ley",
-  "license": "LGPL-3.0-or-later",
-  "devDependencies": {
-    "@types/node": "22.7.7",
-    "tsx": "4.19.1"
-  }
+	"name": "zorua",
+	"version": "0.0.1",
+	"description": "reader",
+	"main": "main.ts",
+	"scripts": {
+		"dev": "tsx watch --no-cache --clear-screen=false src/main.ts"
+	},
+	"author": "XG.Ley",
+	"license": "LGPL-3.0-or-later",
+	"devDependencies": {
+		"@types/node": "22.7.7",
+		"tsx": "4.19.1",
+		"typescript": "5.6.3"
+	},
+	"dependencies": {
+		"purify-ts": "2.1.0"
+	},
+	"main": "main.js",
+	"module": "main.js",
+	"types": "main.d.ts"
 }
