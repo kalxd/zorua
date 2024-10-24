@@ -6,8 +6,9 @@ export interface Reader<T, R> {
 export interface ReaderCtx<T> {
 	ask: () => Readonly<T>;
 	asks: <R>(f: (env: Readonly<T>) => R) => R;
+	askByKey: <K extends keyof T>(key: K) => Readonly<T[K]>;
 	bindFrom: <RA>(reader: Reader<T, RA>) => RA;
-	withBind: <TA, R>(r: Reader<TA, R>, f: (env: T) => TA) => R;
+	bindWith: <TA, R>(r: Reader<TA, R>, f: (env: T) => TA) => R;
 }
 
 export const reader = <T, R>(f: (helper: ReaderCtx<T>) => R): Reader<T, R> => {
@@ -15,8 +16,9 @@ export const reader = <T, R>(f: (helper: ReaderCtx<T>) => R): Reader<T, R> => {
 		const ctx: ReaderCtx<T> = {
 			ask: () => env,
 			asks: g => g(env),
+			askByKey: key => env[key],
 			bindFrom: r => r.runReader(env),
-			withBind: (r, f) => r.runReader(f(env))
+			bindWith: (r, f) => r.runReader(f(env))
 		};
 
 		return f(ctx);
