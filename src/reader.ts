@@ -25,8 +25,8 @@ export const reader = <T, R>(f: (helper: ReaderCtx<T>) => R): Reader<T, R> => {
 	};
 
 	const pipe = <RA>(r: Reader<R, RA>): Reader<T, RA> => reader(ctx => {
-			const envR = f(ctx);
-			return r.runReader(envR);
+		const envR = f(ctx);
+		return r.runReader(envR);
 	});
 
 	return {
