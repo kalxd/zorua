@@ -1,19 +1,51 @@
-import { createServer, IncomingMessage } from "node:http";
+import { createServer } from "node:http";
+import { EitherAsync, Right, Either } from "purify-ts";
+import { Handler, handler } from "./handler";
+import { HttpState } from "./state";
 
-import { Reader, ReaderCtx, reader } from "./reader";
-import { EitherAsync, Right } from "purify-ts";
-
-interface HttpState<S> {
-	req: IncomingMessage;
-	state: S;
-}
-
-interface HttpApplication {
+interface HttpMiddleware<S, E, R> {
+	fn: <RA>(handler: Handler<R, E, RA>) => HttpMiddleware<S, E, RA>;
 	listen: (port: number, callback: () => void) => void;
 }
 
-const application = <S>(state: S): HttpApplication => {
-	const listen: HttpApplication["listen"] = (port, callback) => {
+const middleware = <S, E, R>(state: S, ha: Handler<S, E, R>): HttpMiddleware<S, E, R> => {
+	const fn: HttpMiddleware<S, E, R>["fn"] = hb => {
+		const h = ha.bindPipe(hb);
+		return middleware(state, h);
+	};
+
+	const listen: HttpMiddleware<S, E, R>["listen"] = (port, callback) => {
+		const srv = createServer(async (req, res) => {
+			const httpState: HttpState<S> = {
+				req,
+				state
+			};
+
+			const result = await ha.runReader(httpState);
+			const content = JSON.stringify(result);
+			res.setHeader("Content-Type", "application/json");
+			res.write(content);
+			res.end();
+		});
+
+		srv.listen(port, undefined, undefined, callback);
+	};
+
+	return {
+		fn,
+		listen
+	};
+};
+
+interface HttpApplication<S> {
+	fn: <E, R>(handler: Handler<S, E, R>) => HttpMiddleware<S, E, R>;
+	listen: (port: number, callback: () => void) => void;
+}
+
+const application = <S>(state: S): HttpApplication<S> => {
+	const fn: HttpApplication<S>["fn"] = h => middleware(state, h);
+
+	const listen: HttpApplication<S>["listen"] = (port, callback) => {
 		const srv = createServer((_, res) => {
 			res.end("ok");
 		});
@@ -22,10 +54,33 @@ const application = <S>(state: S): HttpApplication => {
 	};
 
 	return {
+		fn,
 		listen
 	};
 };
 
 
-application(undefined)
+application({ nameCount: 1 })
+	.fn(handler(ctx => {
+		const state = ctx.askByKey("state");
+		const value = Either.encase(() => {
+			if (state.nameCount === 1) {
+				throw "failed";
+			}
+			else {
+				return state.nameCount + 1;
+			}
+		});
+
+		return EitherAsync.liftEither(value);
+	}))
+	.fn(handler(ctx => {
+		console.log("do this?");
+		const value = ctx.askByKey("state");
+		const nextState = {
+			name: "hello",
+			value: JSON.stringify(value)
+		};
+		return EitherAsync.liftEither(Right(nextState));
+	}))
 	.listen(3000, () => console.log("start!"));
