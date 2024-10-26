@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { EitherAsync, Right, Either } from "purify-ts";
+import { EitherAsync, Right } from "purify-ts";
 import { Handler, handler } from "./handler";
 import { HttpState } from "./state";
 
@@ -8,7 +8,9 @@ interface HttpMiddleware<S, E, R> {
 	listen: (port: number, callback: () => void) => void;
 }
 
-const middleware = <S, E, R>(state: S, ha: Handler<S, E, R>): HttpMiddleware<S, E, R> => {
+const middleware = <S, E, R>(
+	state: S, ha: Handler<S, E, R>
+): HttpMiddleware<S, E, R> => {
 	const fn: HttpMiddleware<S, E, R>["fn"] = hb => {
 		const h = ha.bindPipe(hb);
 		return middleware(state, h);
@@ -59,20 +61,14 @@ const application = <S>(state: S): HttpApplication<S> => {
 	};
 };
 
-
 application({ nameCount: 1 })
 	.fn(handler(ctx => {
 		const state = ctx.askByKey("state");
-		const value = Either.encase(() => {
-			if (state.nameCount === 1) {
-				throw "failed";
-			}
-			else {
-				return state.nameCount + 1;
-			}
-		});
-
-		return EitherAsync.liftEither(value);
+		if (state.nameCount === 1) {
+			const v = ctx.liftSend("open here");
+			return v;
+		}
+		return EitherAsync.liftEither(Right(state.nameCount + 1))
 	}))
 	.fn(handler(ctx => {
 		console.log("do this?");
