@@ -63,7 +63,7 @@ const application = <S>(state: S): HttpApplication<S> => {
 
 application({ nameCount: 1 })
 	.fn(handler(ctx => {
-		const state = ctx.askByKey("state");
+		const state = ctx.prop("state");
 		if (state.nameCount === 1) {
 			const v = ctx.liftSend("open here");
 			return v;
@@ -72,7 +72,7 @@ application({ nameCount: 1 })
 	}))
 	.fn(handler(ctx => {
 		console.log("do this?");
-		const value = ctx.askByKey("state");
+		const value = ctx.prop("state");
 		const nextState = {
 			name: "hello",
 			value: JSON.stringify(value)

@@ -33,7 +33,7 @@ export const handler = <T, E, R>(
 	const bindPipe: Handler<T, E, R>["bindPipe"] = h =>
 		handler(ctx => f(ctx).chain(nextState => {
 			const state: HttpState<R> = {
-				req: ctx.askByKey("req"),
+				req: ctx.prop("req"),
 				state: nextState,
 			};
 
