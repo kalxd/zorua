@@ -2,13 +2,11 @@ import { EitherAsync, Left } from "purify-ts";
 import { Reader, ReaderCtx, reader } from "./reader";
 import { HttpState, ActionResult } from "./state";
 
-export interface Handler<T, E, R> extends
-Reader<HttpState<T>, EitherAsync<ActionResult<E>, R>> {
+export interface Handler<T, E, R> extends Reader<HttpState<T>, EitherAsync<ActionResult<E>, R>> {
 	bindPipe: <RA>(r: Handler<R, E, RA>) => Handler<T, E, RA>;
 }
 
-export interface HandlerCtx<T> extends
-ReaderCtx<HttpState<T>> {
+export interface HandlerCtx<T> extends ReaderCtx<HttpState<T>> {
 	liftSend: <A>(value: A) => EitherAsync<ActionResult<A>, never>;
 }
 
