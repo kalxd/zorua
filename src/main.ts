@@ -123,20 +123,25 @@ const application = <S>(state: S): HttpApplication<S> => {
 	};
 };
 
+const fn1: Handler<{ nameCount: number}, string, number> = handler(ctx => {
+	const state = ctx.prop("state");
+	return EitherAsync.liftEither(Right(state.nameCount + 1))
+});
+
+const fn2: Handler<number, never, { name: string, value: string}> = handler(ctx => {
+	console.log("do this?");
+	const value = ctx.prop("state");
+	const nextState = {
+		name: "hello",
+		value: JSON.stringify(value)
+	};
+	return EitherAsync.liftEither(Right(nextState));
+});
+
+const fn3 = fn1.bindPipe(fn2);
+
 application({ nameCount: 1 })
-	.fn(handler(ctx => {
-		const state = ctx.prop("state");
-		return EitherAsync.liftEither(Right(state.nameCount + 1))
-	}))
-	.fn(handler(ctx => {
-		console.log("do this?");
-		const value = ctx.prop("state");
-		const nextState = {
-			name: "hello",
-			value: JSON.stringify(value)
-		};
-		return EitherAsync.liftEither(Right(nextState));
-	}))
+	.fn(fn3)
 	.source("/abc").fn(handler(ctx => {
 		console.log("do all abc");
 		return ctx.liftSend("ok");
