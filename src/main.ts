@@ -1,19 +1,78 @@
 import { createServer } from "node:http";
-import { EitherAsync, Maybe, Nothing, Right } from "purify-ts";
+import { EitherAsync, Just, Maybe, Nothing, Right } from "purify-ts";
 import { Handler, handler } from "./handler";
 import { HttpState } from "./state";
 
+interface HttpDeclInnerRecord {
+	path: string;
+	method: Maybe<string>;
+}
+
+interface HttpDecl<S, E, R> {
+	method: (method: string) => HttpDecl<S, E, R>;
+	fn: (handler: Handler<S, E, R>) => HttpMiddleware<S, E, R>;
+}
+
+const httpDecl = <S, E, R>(
+	innerRecord: HttpDeclInnerRecord,
+	state: S,
+	ha: Handler<S, E, R>
+): HttpDecl<S, E, R> => {
+	const method: HttpDecl<S, E, R>["method"] = m => {
+		const nextInner: HttpDeclInnerRecord = {
+			...innerRecord,
+			method: Just(m)
+		};
+
+		return httpDecl(nextInner, state, ha);
+	};
+
+	const fn: HttpDecl<S, E, R>["fn"] = hb => {
+		const hh = handler<S, E, R>(ctx => {
+			const s = ctx.ask();
+			return ha.runReader(s)
+				.chain(async a => {
+					console.log(s.req.url);
+					console.log(innerRecord.path);
+					if (s.req.url === innerRecord.path) {
+						return hb.runReader(s);
+					}
+
+					return Right(a);
+				})
+		});
+
+		return middleware(state, hh);
+	};
+
+	return {
+		method,
+		fn
+	}
+};
+
 interface HttpMiddleware<S, E, R> {
 	fn: <RA>(handler: Handler<R, E, RA>) => HttpMiddleware<S, E, RA>;
+	source: (path: string) => HttpDecl<S, E, R>;
 	listen: (port: number, callback: () => void) => void;
 }
 
 const middleware = <S, E, R>(
-	state: S, ha: Handler<S, E, R>
+	state: S,
+	ha: Handler<S, E, R>
 ): HttpMiddleware<S, E, R> => {
 	const fn: HttpMiddleware<S, E, R>["fn"] = hb => {
 		const h = ha.bindPipe(hb);
 		return middleware(state, h);
+	};
+
+	const source: HttpMiddleware<S, E, R>["source"] = path => {
+		const record: HttpDeclInnerRecord = {
+			path,
+			method: Nothing
+		}
+
+		return httpDecl(record, state, ha);
 	};
 
 	const listen: HttpMiddleware<S, E, R>["listen"] = (port, callback) => {
@@ -35,46 +94,12 @@ const middleware = <S, E, R>(
 
 	return {
 		fn,
+		source,
 		listen
 	};
 };
 
-interface HttpApiDecl<S, E, R> {
-	service: <RA>(handler: Handler<S, E, RA>) => HttpMiddleware<S, E, R>;
-}
 
-interface HttpApiDeclState {
-	path: string;
-	method: Maybe<string>;
-}
-
-const wrapApi = <S, E, R>(apiState: HttpApiDeclState, ha: Handler<S, E, R>): HttpApiDecl<S, E, R> => {
-	const service: HttpApiDecl<S, E, R>["service"] = h => {
-		const hh = handler<S, E, R>(ctx => {
-			const state = ctx.ask();
-			const req = state.req;
-			if (req.url !== apiState.path) {
-				return ha.runReader(state);
-			}
-
-			return h.runReader(state);
-		});
-		return middleware(hh);
-	};
-
-	return {
-		service
-	};
-};
-
-const api = <S, E, R>(path: string): HttpApiDecl<S, E, R> => {
-	const state: HttpApiDeclState = {
-		path,
-		method: Nothing
-	};
-
-	return wrapApi(state);
-};
 
 interface HttpApplication<S> {
 	fn: <E, R>(handler: Handler<S, E, R>) => HttpMiddleware<S, E, R>;
@@ -101,10 +126,6 @@ const application = <S>(state: S): HttpApplication<S> => {
 application({ nameCount: 1 })
 	.fn(handler(ctx => {
 		const state = ctx.prop("state");
-		if (state.nameCount === 1) {
-			const v = ctx.liftSend("open here");
-			return v;
-		}
 		return EitherAsync.liftEither(Right(state.nameCount + 1))
 	}))
 	.fn(handler(ctx => {
@@ -116,5 +137,14 @@ application({ nameCount: 1 })
 		};
 		return EitherAsync.liftEither(Right(nextState));
 	}))
-	.fn(api(""))
+	.source("/abc").fn(handler(ctx => {
+		console.log("do all abc");
+		return ctx.liftSend("ok");
+	}))
+	.source("/abc").method("post").fn(handler(ctx => {
+		const s = ctx.ask();
+		console.log(s.state);
+		return ctx.liftSend("post abc");
+	}))
+	.fn(handler(ctx => ctx.liftSend("not found")))
 	.listen(3000, () => console.log("start!"));
