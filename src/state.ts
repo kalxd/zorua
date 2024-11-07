@@ -1,9 +1,12 @@
 import { IncomingMessage } from "node:http";
 
-export interface HttpState<S> {
+export interface HttpState<S, RS = undefined> {
 	req: IncomingMessage;
 	state: S;
+	route: RS;
 }
+
+export type MergeState<S, U> = HttpState<S> & U;
 
 export class HttpError {
 	readonly code: number;
