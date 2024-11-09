@@ -40,7 +40,8 @@ const httpDecl = <S, ST, E, R>(
 		const cb: Cond<S, ST, E, ST & { method: string }> = cond(ctx => {
 			const st = ctx.ask();
 			const x = Maybe.fromNullable(st.req.method)
-				.filter(method => method === m)
+				.map(s => s.toLowerCase())
+				.filter(method => method === m.toLowerCase())
 				.map(method => ({
 					...st.route,
 					method
@@ -79,9 +80,9 @@ const middleware = <S, E, R>(
 		const c: Cond<S, undefined, E, { path: string }> = cond(ctx => {
 			const req = ctx.prop("req");
 
-			const x = Maybe.of(req.url)
+			const x = Maybe.fromNullable(req.url)
 				.filter(url => url === path)
-				.map(url => ({ path: url as string}));
+				.map(url => ({ path: url }));
 
 			return EitherAsync.liftEither(Right(x));
 		});
@@ -155,5 +156,7 @@ const fn3 = fn1.bindPipe(fn2);
 
 application({ nameCount: 1 })
 	.fn(fn3)
-	.fn(handler(ctx => ctx.liftSend("not found")))
+	.source("/abc").method("get").service(handler(ctx => {
+		return ctx.liftSend("hello");
+	}))
 	.listen(3000, () => console.log("start!"));
