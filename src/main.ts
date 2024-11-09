@@ -133,9 +133,25 @@ const middleware = <S, E, R>(
 			};
 
 			const result = await ha.runReader(httpState);
-			const content = JSON.stringify(result);
+			const [content, code] = result.caseOf({
+				Right: a => [JSON.stringify(a), 200],
+				Left: e => {
+					if (e.type === "abort") {
+						return [e.value, 200];
+					}
+					if (e.type === "err") {
+						return [e.err.encodeToBody(), e.err.code];
+					}
+					if (e.type === "innerErr") {
+						return [e.err, e.code];
+					}
+					const _: never = e;
+					return _;
+				}
+			});
 			res.setHeader("Content-Type", "application/json");
 			res.write(content);
+			res.statusCode = code;
 			res.end();
 		});
 
@@ -191,7 +207,10 @@ const fn3 = fn1.bindPipe(fn2);
 application({ nameCount: 1 })
 	.fn(fn3)
 	.source("/abc").method("get").service(handler(ctx => {
-		return EitherAsync.liftEither(Right(1))
+		return EitherAsync.liftEither(Right({
+			a: 1,
+			b: ["1", { a: 1 }]
+		}))
 	}))
 	.source("/abc").method("post").body(CC.Codec.interface({ name: CC.string, code: CC.number })).service(handler(ctx => {
 		const body = ctx.ask().route.body;
