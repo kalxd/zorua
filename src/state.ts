@@ -30,6 +30,19 @@ export interface ActionErr<E> {
 	err: HttpError<E>;
 }
 
+export interface ActionInnerErr {
+	type: "innerErr";
+	err: string;
+	code: number;
+}
+
+export const mkActionInnerErr = (msg: string): ActionInnerErr => ({
+	type: "innerErr",
+	err: msg,
+	code: 400
+});
+
 export type ActionResult<E>
 	= ActionAbort
-	| ActionErr<E>;
+	| ActionErr<E>
+	| ActionInnerErr;

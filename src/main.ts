@@ -1,11 +1,13 @@
 import { createServer } from "node:http";
-import { EitherAsync, Maybe, Right } from "purify-ts";
+import { EitherAsync, Just, Left, Maybe, Right, type Codec } from "purify-ts";
 import { Handler, handler } from "./handler";
 import { Cond, cond } from "./cond";
-import { HttpState } from "./state";
+import { HttpState, mkActionInnerErr } from "./state";
+import * as CC from "purify-ts";
 
 interface HttpDecl<S, ST, E, R> {
 	method: (method: string) => HttpDecl<S, ST & { method: string }, E, R>;
+	body: <C>(codec: Codec<C>) => HttpDecl<S, ST & { body: C }, E, R>;
 	service: <RA>(handler: Handler<S, E, RA, ST>) => HttpMiddleware<S, E, R>;
 }
 
@@ -53,8 +55,42 @@ const httpDecl = <S, ST, E, R>(
 		return httpDecl(state, c, ha);
 	};
 
+	const body: HttpDecl<S, ST, E, R>["body"] = <C>(codec: Codec<C>) => {
+		const cb: Cond<S, ST, E, ST & { body: C }> = cond(ctx => {
+			const st = ctx.ask();
+
+			return EitherAsync.fromPromise(async () => {
+				const bodyBuf = await new Promise<string>((resolve, reject) => {
+					let bodyBuf = "";
+					st.req.on("data", buf => bodyBuf += buf);
+					st.req.on("end", () => resolve(bodyBuf));
+					st.req.on("end", reject);
+				});
+
+				try {
+					return Right(JSON.parse(bodyBuf));
+				}
+				catch (e) {
+					return Left(mkActionInnerErr((e as Error).message));
+				}
+			})
+				.chain(async x => {
+					return codec.decode(x)
+						.mapLeft(mkActionInnerErr)
+				})
+				.map(body => ({
+					...st.route,
+					body
+				}))
+				.map(Just);
+		});
+
+		return httpDecl(state, ca.bindPipe(cb), ha);
+	};
+
 	return {
 		method,
+		body,
 		service,
 	}
 };
@@ -135,12 +171,12 @@ const application = <S>(state: S): HttpApplication<S> => {
 	};
 };
 
-const fn1: Handler<{ nameCount: number}, never, number> = handler(ctx => {
+const fn1: Handler<{ nameCount: number }, never, number> = handler(ctx => {
 	const state = ctx.prop("state");
 	return EitherAsync.liftEither(Right(state.nameCount + 1))
 });
 
-const fn2: Handler<number, never, { name: string, value: string}> = handler(ctx => {
+const fn2: Handler<number, never, { name: string, value: string }> = handler(ctx => {
 	console.log("do this?");
 	const value = ctx.prop("state");
 	const nextState = {
@@ -154,13 +190,11 @@ const fn3 = fn1.bindPipe(fn2);
 
 application({ nameCount: 1 })
 	.fn(fn3)
-	.fn(handler(ctx => {
-		return ctx.liftSend(1);
-	}))
 	.source("/abc").method("get").service(handler(ctx => {
-		return ctx.liftSend("get");
+		return EitherAsync.liftEither(Right(1))
 	}))
-	.source("/abc").method("post").service(handler(ctx => {
-		return ctx.liftSend("post");
+	.source("/abc").method("post").body(CC.Codec.interface({ name: CC.string, code: CC.number })).service(handler(ctx => {
+		const body = ctx.ask().route.body;
+		return ctx.liftSend(body);
 	}))
 	.listen(3000, () => console.log("start!"));
