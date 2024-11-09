@@ -17,20 +17,18 @@ const httpDecl = <S, ST, E, R>(
 	const service: HttpDecl<S, ST, E, R>["service"] = hb => {
 		const h = handler<S, E, R>(ctx => {
 			const st = ctx.ask();
-			return ha.runReader(st)
-				.chain(a => {
-					return ca.runReader(st)
-						.chain(x => x.caseOf({
-							Just: r => {
-								const nt: HttpState<S, ST> = {
-									...st,
-									route: r
-								};
-								return hb.runReader(nt).map(_ => a);
-							},
-							Nothing: () => EitherAsync.liftEither(Right(a))
-						}));
-				});
+			return ha.runReader(st).chain(a => {
+				return ca.runReader(st).chain(x => x.caseOf({
+					Just: r => {
+						const nt: HttpState<S, ST> = {
+							...st,
+							route: r
+						};
+						return hb.runReader(nt).chain(ctx.liftSend)
+					},
+					Nothing: () => EitherAsync.liftEither(Right(a))
+				}));
+			});
 		});
 
 		return middleware(state, h);
@@ -137,7 +135,7 @@ const application = <S>(state: S): HttpApplication<S> => {
 	};
 };
 
-const fn1: Handler<{ nameCount: number}, string, number> = handler(ctx => {
+const fn1: Handler<{ nameCount: number}, never, number> = handler(ctx => {
 	const state = ctx.prop("state");
 	return EitherAsync.liftEither(Right(state.nameCount + 1))
 });
@@ -156,7 +154,13 @@ const fn3 = fn1.bindPipe(fn2);
 
 application({ nameCount: 1 })
 	.fn(fn3)
+	.fn(handler(ctx => {
+		return ctx.liftSend(1);
+	}))
 	.source("/abc").method("get").service(handler(ctx => {
-		return ctx.liftSend("hello");
+		return ctx.liftSend("get");
+	}))
+	.source("/abc").method("post").service(handler(ctx => {
+		return ctx.liftSend("post");
 	}))
 	.listen(3000, () => console.log("start!"));

@@ -6,28 +6,30 @@ export interface HttpState<S, RS = undefined> {
 	route: RS;
 }
 
-export type MergeState<S, U> = HttpState<S> & U;
-
-export class HttpError {
+export class HttpError<E> {
 	readonly code: number;
-	readonly message: string;
+	readonly content: E;
 
-	constructor(code: number, message: string) {
+	constructor(code: number, content: E) {
 		this.code = code;
-		this.message = message;
+		this.content = content;
+	}
+
+	encodeToBody(): string {
+		return JSON.stringify(this.content);
 	}
 }
 
-export interface ActionAbort<T> {
+export interface ActionAbort {
 	type: "abort";
-	value: T;
+	value: string;
 }
 
-export interface ActionErr {
+export interface ActionErr<E> {
 	type: "err";
-	err: HttpError;
+	err: HttpError<E>;
 }
 
-export type ActionResult<T>
-	= ActionAbort<T>
-	| ActionErr;
+export type ActionResult<E>
+	= ActionAbort
+	| ActionErr<E>;

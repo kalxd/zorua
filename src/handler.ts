@@ -6,20 +6,20 @@ export interface Handler<T, E, R, ST = undefined> extends Reader<HttpState<T, ST
 	bindPipe: <RA>(r: Handler<R, E, RA, ST>) => Handler<T, E, RA, ST>;
 }
 
-export interface HandlerCtx<T, ST = undefined> extends ReaderCtx<HttpState<T, ST>> {
-	liftSend: <A>(value: A) => EitherAsync<ActionResult<A>, never>;
+export interface HandlerCtx<T, E, ST = undefined> extends ReaderCtx<HttpState<T, ST>> {
+	liftSend: <A>(value: A) => EitherAsync<ActionResult<E>, never>;
 }
 
 export const handler = <T, E, R, ST = undefined>(
-	f: (ctx: HandlerCtx<T, ST>) => EitherAsync<ActionResult<E>, R>
+	f: (ctx: HandlerCtx<T, E, ST>) => EitherAsync<ActionResult<E>, R>
 ): Handler<T, E, R, ST> => {
 	const theReader = reader((ctx: ReaderCtx<HttpState<T, ST>>) => {
-		const handlerCtx: HandlerCtx<T, ST> = {
+		const handlerCtx: HandlerCtx<T, E, ST> = {
 			...ctx,
 			liftSend: <A>(v: A) => {
 				const value: ActionResult<A> = {
 					type: "abort",
-					value: v
+					value: JSON.stringify(v)
 				};
 				return EitherAsync.liftEither(Left(value));
 			}
