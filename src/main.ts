@@ -26,7 +26,7 @@ const httpDecl = <S, ST, E, R>(
 							...st,
 							route: r
 						};
-						return hb.runReader(nt).chain(ctx.liftSend)
+						return hb.runReader(nt).chain(ctx.send)
 					},
 					Nothing: () => EitherAsync.liftEither(Right(a))
 				}));
@@ -214,6 +214,6 @@ application({ nameCount: 1 })
 	}))
 	.source("/abc").method("post").body(CC.Codec.interface({ name: CC.string, code: CC.number })).service(handler(ctx => {
 		const body = ctx.ask().route.body;
-		return ctx.liftSend(body);
+		return ctx.send(body);
 	}))
 	.listen(3000, () => console.log("start!"));

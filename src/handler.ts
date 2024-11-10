@@ -7,7 +7,7 @@ export interface Handler<T, E, R, ST = undefined> extends Reader<HttpState<T, ST
 }
 
 export interface HandlerCtx<T, E, ST = undefined> extends ReaderCtx<HttpState<T, ST>> {
-	liftSend: <A>(value: A) => EitherAsync<ActionResult<E>, never>;
+	send: <A>(value: A) => EitherAsync<ActionResult<E>, never>;
 }
 
 export const handler = <T, E, R, ST = undefined>(
@@ -16,7 +16,7 @@ export const handler = <T, E, R, ST = undefined>(
 	const theReader = reader((ctx: ReaderCtx<HttpState<T, ST>>) => {
 		const handlerCtx: HandlerCtx<T, E, ST> = {
 			...ctx,
-			liftSend: <A>(v: A) => {
+			send: <A>(v: A) => {
 				const value: ActionResult<A> = {
 					type: "abort",
 					value: JSON.stringify(v)
