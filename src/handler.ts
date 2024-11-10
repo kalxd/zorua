@@ -7,6 +7,8 @@ export interface Handler<T, E, R, ST = undefined> extends Reader<HttpState<T, ST
 }
 
 export interface HandlerCtx<T, E, ST = undefined> extends ReaderCtx<HttpState<T, ST>> {
+	state: <K extends keyof T>(key: K) => T[K];
+	source: <K extends keyof ST>(key: K) => ST[K];
 	send: <A>(value: A) => EitherAsync<ActionResult<E>, never>;
 }
 
@@ -16,6 +18,8 @@ export const handler = <T, E, R, ST = undefined>(
 	const theReader = reader((ctx: ReaderCtx<HttpState<T, ST>>) => {
 		const handlerCtx: HandlerCtx<T, E, ST> = {
 			...ctx,
+			state: key => ctx.asks(x => x.state[key]),
+			source: key => ctx.asks(x => x.source[key]),
 			send: <A>(v: A) => {
 				const value: ActionResult<A> = {
 					type: "abort",

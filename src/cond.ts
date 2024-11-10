@@ -19,7 +19,7 @@ export const cond = <S, TS, E, R>(
 				const state = ctx.ask();
 				const rr: HttpState<S, R> = {
 					...state,
-					route: r
+					source: r
 				};
 				return g.runReader(rr);
 			},

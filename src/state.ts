@@ -3,7 +3,7 @@ import { IncomingMessage } from "node:http";
 export interface HttpState<S, RS = undefined> {
 	req: IncomingMessage;
 	state: S;
-	route: RS;
+	source: RS;
 }
 
 export class HttpError<E> {
