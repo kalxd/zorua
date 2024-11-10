@@ -8,7 +8,7 @@ import * as CC from "purify-ts";
 interface HttpDecl<S, ST, E, R> {
 	method: (method: string) => HttpDecl<S, ST & { method: string }, E, R>;
 	body: <C>(codec: Codec<C>) => HttpDecl<S, ST & { body: C }, E, R>;
-	service: <RA>(handler: Handler<S, E, RA, ST>) => HttpMiddleware<S, E, R>;
+	service: <RA>(handler: Handler<R, E, RA, ST>) => HttpMiddleware<S, E, R>;
 }
 
 const httpDecl = <S, ST, E, R>(
@@ -22,8 +22,9 @@ const httpDecl = <S, ST, E, R>(
 			return ha.runReader(st).chain(a => {
 				return ca.runReader(st).chain(x => x.caseOf({
 					Just: r => {
-						const nt: HttpState<S, ST> = {
+						const nt: HttpState<R, ST> = {
 							...st,
+							state: a,
 							route: r
 						};
 						return hb.runReader(nt).chain(ctx.send)
