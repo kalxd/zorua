@@ -30,7 +30,7 @@ application(1000 /* 这里填全局状态，想填什么都行 */)
   }))
   .source("/abc").method("post").body(C.interface({})).service(ctx => { // @f4
 	const body = ctx.source("body");  // 因为调用了body，所以此处可以得到body，不然会报"body"不存在错误。
-	const state = ctx.ask(); // { state: string }，依然会原先状态，不会受source影响。
+	const state = ctx.ask(); // { state: string }，依然还是原先状态，不会受source影响。
 	return { [state]: body };
   })
   .fn(handler(ctx => "not found"))
