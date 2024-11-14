@@ -2,21 +2,21 @@ import { EitherAsync, Left } from "purify-ts";
 import { Reader, ReaderCtx, reader } from "./reader";
 import { HttpState, ActionResult } from "./state";
 
-export interface Handler<T, E, R, ST = undefined> extends Reader<HttpState<T, ST>, EitherAsync<ActionResult<E>, R>> {
-	bindPipe: <RA>(r: Handler<R, E, RA, ST>) => Handler<T, E, RA, ST>;
+export interface Handler<S, E, R, ST = undefined> extends Reader<HttpState<S, ST>, EitherAsync<ActionResult<E>, R>> {
+	bindPipe: <RA>(r: Handler<R, E, RA, ST>) => Handler<S, E, RA, ST>;
 }
 
-export interface HandlerCtx<T, E, ST = undefined> extends ReaderCtx<HttpState<T, ST>> {
-	state: <K extends keyof T>(key: K) => T[K];
+export interface HandlerCtx<S, E, ST = undefined> extends ReaderCtx<HttpState<S, ST>> {
+	state: <K extends keyof S>(key: K) => S[K];
 	source: <K extends keyof ST>(key: K) => ST[K];
 	send: <A>(value: A) => EitherAsync<ActionResult<E>, never>;
 }
 
-export const handler = <T, E, R, ST = undefined>(
-	f: (ctx: HandlerCtx<T, E, ST>) => EitherAsync<ActionResult<E>, R>
-): Handler<T, E, R, ST> => {
-	const theReader = reader((ctx: ReaderCtx<HttpState<T, ST>>) => {
-		const handlerCtx: HandlerCtx<T, E, ST> = {
+export const handler = <S, E, R, ST = undefined>(
+	f: (ctx: HandlerCtx<S, E, ST>) => EitherAsync<ActionResult<E>, R>
+): Handler<S, E, R, ST> => {
+	const theReader = reader((ctx: ReaderCtx<HttpState<S, ST>>) => {
+		const handlerCtx: HandlerCtx<S, E, ST> = {
 			...ctx,
 			state: key => ctx.asks(x => x.state[key]),
 			source: key => ctx.asks(x => x.source[key]),
@@ -32,7 +32,7 @@ export const handler = <T, E, R, ST = undefined>(
 		return f(handlerCtx);
 	});
 
-	const bindPipe: Handler<T, E, R, ST>["bindPipe"] = h =>
+	const bindPipe: Handler<S, E, R, ST>["bindPipe"] = h =>
 		handler(ctx => f(ctx).chain(nextState => {
 			const state = ctx.ask();
 			const nt: HttpState<R, ST> = {
