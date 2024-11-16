@@ -217,4 +217,5 @@ application({ nameCount: 1 })
 		const body = ctx.source("body");
 		return ctx.send(body);
 	}))
+	.fn(handler(_ => EitherAsync.liftEither(Right("not found"))))
 	.listen(3000, () => console.log("start!"));

@@ -60,6 +60,13 @@ createServer((req, res) => {
 })
 ```
 
+# 实现细节
+
+阅读顺序从上到下。
+
+* [typescript上的reader.pdf](https://kalxd.github.io/%E7%AC%94%E8%AE%B0/pdf/typescript%E4%B8%8A%E7%9A%84reader.pdf)
+* [类型安全的web框架.pdf](https://kalxd.github.io/%E7%AC%94%E8%AE%B0/pdf/%E7%B1%BB%E5%9E%8B%E5%AE%89%E5%85%A8%E7%9A%84web%E6%A1%86%E6%9E%B6.pdf)
+
 # 协议
 
 AGPL v3
